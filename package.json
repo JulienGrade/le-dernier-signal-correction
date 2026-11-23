@@ -1,0 +1,18 @@
+{
+  "name": "le-dernier-signal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "vite": "8.3.8"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

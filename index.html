@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080e1a">
+  <meta name="description" content="Réactivez un avant-poste spatial et envoyez son dernier signal.">
+  <title>Le dernier signal — Avant-poste 07</title>
+</head>
+<body>
+  <a class="skip" href="#mission-controls">Aller aux commandes</a>
+  <main>
+    <section class="viewport" aria-label="Vue interactive de l'avant-poste">
+      <canvas id="scene" aria-label="Station sur un astéroïde. Utilisez aussi les commandes textuelles pour activer les relais."></canvas>
+      <header class="topbar"><a class="brand" href="./" aria-label="Le dernier signal, accueil"><span class="brand-icon">S</span> SIGNAL<span class="brand-divider">/</span><span class="brand-small">EXPÉDITION 07</span></a><span class="sector">SECTEUR ORION <i></i> 04.26</span></header>
+      <div class="scene-caption"><span class="eyebrow">AVANT-POSTE SCIENTIFIQUE</span><h1>Le dernier<br><em>signal.</em></h1><p>Une station silencieuse.<br>Trois relais. Un dernier espoir.</p></div>
+      <div id="tooltip" role="presentation" hidden></div>
+      <div class="coordinates"><span>OBJET / AST-042</span><span>POSITION 18° 42′ N</span></div>
+      <div class="scene-tools"><button id="view-reset" aria-label="Recentrer la caméra">Recentrer</button><button id="motion" aria-pressed="false">Mettre en pause</button></div>
+      <div class="gesture">Glisser pour explorer <span>·</span> Défiler pour zoomer</div>
+    </section>
+    <aside class="mission" id="mission-controls" tabindex="-1">
+      <div class="mission-top"><span class="eyebrow">JOURNAL DE MISSION</span><span class="status-tag" id="status-tag">HORS LIGNE</span></div>
+      <div class="chapter-label">01 <span>/ RÉTABLIR LA LIAISON</span></div>
+      <h2>Quelqu’un<br>nous entend ?</h2>
+      <p class="intro">L’avant-poste ne répond plus. Réactivez les trois relais d’énergie pour transmettre notre position.</p>
+      <div class="power-heading"><span>ALIMENTATION</span><strong id="power">0 / 3</strong></div>
+      <div class="power-track" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="relay-list" aria-label="Relais d'énergie">
+        <button class="relay" data-relay="Relay_01" disabled><span class="relay-number">01</span><span><strong>Relais Alpha</strong><small>MODULE D’ALIMENTATION</small></span><span class="relay-state">Éteint</span></button>
+        <button class="relay" data-relay="Relay_02" disabled><span class="relay-number">02</span><span><strong>Relais Bêta</strong><small>MODULE D’ALIMENTATION</small></span><span class="relay-state">Éteint</span></button>
+        <button class="relay" data-relay="Relay_03" disabled><span class="relay-number">03</span><span><strong>Relais Gamma</strong><small>MODULE D’ALIMENTATION</small></span><span class="relay-state">Éteint</span></button>
+      </div>
+      <button id="transmit" class="primary" disabled>Envoyer le signal <span aria-hidden="true">↗</span></button>
+      <p id="message" class="message" role="status" aria-live="polite">Chargement de l’avant-poste…</p>
+      <button id="restart" class="restart" disabled>Recommencer la mission</button>
+      <footer><span class="live-dot"></span> LIAISON LOCALE <span class="footer-code">DS / 007</span></footer>
+    </aside>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
