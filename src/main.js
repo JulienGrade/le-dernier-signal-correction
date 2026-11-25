@@ -8,11 +8,14 @@ import {
 
 import { createPicking } from './picking.js';
 import { createRelays } from './relays.js';
+import { createTransmission } from './transmission.js';
 
 import {
   createMission,
   activateRelay,
   resetMission,
+  startTransmission,
+  finishTransmission,
   RELAY_IDS,
 } from './state.js';
 
@@ -34,21 +37,29 @@ const state = createMission();
 
 let ready = false;
 let relays = null;
+let transmission = null;
 
 function updateInterface() {
   document.querySelector('#power').textContent =
       `${state.active.size} / 3`;
 
-  document.querySelectorAll('.power-track i').forEach((bar, index) => {
-    bar.classList.toggle('on', index < state.active.size);
-  });
+  document.querySelectorAll('.power-track i').forEach(
+      (bar, index) => {
+        bar.classList.toggle(
+            'on',
+            index < state.active.size
+        );
+      }
+  );
 
   for (const button of relayButtons) {
     const id = button.dataset.relay;
     const active = state.active.has(id);
 
     button.disabled =
-        !ready || active || state.phase !== 'collecting';
+        !ready ||
+        active ||
+        state.phase !== 'collecting';
 
     button.classList.toggle('on', active);
 
@@ -64,15 +75,32 @@ function updateInterface() {
   document.querySelector('#transmit').disabled =
       !ready || state.phase !== 'ready';
 
-  document.querySelector('#restart').disabled = !ready;
+  document.querySelector('#restart').disabled =
+      !ready;
+
+  const statuses = {
+    collecting: 'HORS LIGNE',
+    ready: 'PRÊT',
+    transmitting: 'TRANSMISSION',
+    sent: 'SIGNAL ENVOYÉ',
+  };
+
+  const messages = {
+    collecting:
+        'Sélectionnez les relais dans la scène ou dans la liste.',
+    ready:
+        'Énergie rétablie. L’antenne est prête à transmettre.',
+    transmitting:
+        'Alignement de l’antenne… Transmission en cours.',
+    sent:
+        'Signal transmis. Notre position voyage parmi les étoiles.',
+  };
 
   document.querySelector('#status-tag').textContent =
-      state.phase === 'ready' ? 'PRÊT' : 'HORS LIGNE';
+      statuses[state.phase];
 
   if (ready) {
-    message.textContent = state.phase === 'ready'
-        ? 'Énergie rétablie. L’antenne est prête à transmettre.'
-        : 'Sélectionnez les relais dans la scène ou dans la liste.';
+    message.textContent = messages[state.phase];
   }
 }
 
@@ -88,7 +116,8 @@ function requestActivation(id) {
 }
 
 async function boot() {
-  message.textContent = 'Chargement de l’avant-poste…';
+  message.textContent =
+      'Chargement de l’avant-poste…';
 
   try {
     const world = createWorld(canvas);
@@ -100,19 +129,57 @@ async function boot() {
         () => world.recenter()
     );
 
+    let previous = performance.now();
+    let elapsed = 0;
+
     world.renderer.setAnimationLoop((now) => {
+      const delta = Math.min(
+          Math.max((now - previous) / 1000, 0),
+          0.05
+      );
+
+      previous = now;
+      elapsed += delta;
+
       world.controls.update();
 
       if (relays) {
-        relays.update(now / 1000);
+        relays.update(elapsed);
       }
 
-      world.renderer.render(world.scene, world.camera);
+      if (transmission) {
+        transmission.update(delta);
+      }
+
+      world.renderer.render(
+          world.scene,
+          world.camera
+      );
     });
 
     const model = await loadOutpost(world.scene);
 
     relays = createRelays(model);
+
+    transmission = createTransmission(
+        world.scene,
+        model,
+        () => {
+          if (finishTransmission(state)) {
+            updateInterface();
+          }
+        }
+    );
+
+    document.querySelector('#transmit').addEventListener(
+        'click',
+        () => {
+          if (!ready || !startTransmission(state)) return;
+
+          transmission.start();
+          updateInterface();
+        }
+    );
 
     const disconnectPicking = createPicking(
         canvas,
@@ -158,19 +225,23 @@ async function boot() {
       });
     }
 
-    document.querySelector('#restart').addEventListener('click', () => {
-      resetMission(state);
+    document.querySelector('#restart').addEventListener(
+        'click',
+        () => {
+          resetMission(state);
+          transmission.reset();
 
-      for (const id of RELAY_IDS) {
-        relays.setActive(id, false);
-      }
+          for (const id of RELAY_IDS) {
+            relays.setActive(id, false);
+          }
 
-      relays.hover(null);
-      tooltip.hidden = true;
+          relays.hover(null);
+          tooltip.hidden = true;
 
-      world.recenter();
-      updateInterface();
-    });
+          world.recenter();
+          updateInterface();
+        }
+    );
 
     window.addEventListener('pagehide', (event) => {
       if (!event.persisted) {
@@ -181,7 +252,10 @@ async function boot() {
     ready = true;
     updateInterface();
   } catch (error) {
-    console.error('Échec du chargement de la scène :', error);
+    console.error(
+        'Échec du chargement de la scène :',
+        error
+    );
 
     message.textContent =
         `Impossible de préparer l’avant-poste : ${error.message}`;

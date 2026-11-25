@@ -1,4 +1,8 @@
-export const RELAY_IDS = ['Relay_01', 'Relay_02', 'Relay_03'];
+export const RELAY_IDS = [
+  'Relay_01',
+  'Relay_02',
+  'Relay_03',
+];
 
 export function createMission() {
   return {
@@ -22,12 +26,19 @@ export function activateRelay(state, id) {
 }
 
 export function startTransmission(state) {
-  // TODO : passer de ready à transmitting si autorisé.
-  return false;
+  if (state.phase !== 'ready') return false;
+
+  state.phase = 'transmitting';
+
+  return true;
 }
+
 export function finishTransmission(state) {
-  // TODO : passer de transmitting à sent si autorisé.
-  return false;
+  if (state.phase !== 'transmitting') return false;
+
+  state.phase = 'sent';
+
+  return true;
 }
 
 export function resetMission(state) {
