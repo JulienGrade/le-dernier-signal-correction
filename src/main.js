@@ -1,24 +1,39 @@
 import './style.css';
 import * as THREE from 'three';
-import { createWorld } from './world.js';
+import { createWorld, loadOutpost } from './world.js';
 
 const canvas = document.querySelector('#scene');
-const world = createWorld(canvas);
+const message = document.querySelector('#message');
 
-const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(2, 2, 2),
-    new THREE.MeshNormalMaterial()
-);
+async function boot() {
+  message.textContent = 'Chargement de l’avant-poste…';
 
-cube.position.y = 1;
-world.scene.add(cube);
+  try {
+    const world = createWorld(canvas);
 
-const helper = new THREE.AxesHelper(3);
-world.scene.add(helper);
+    const temporaryLight = new THREE.HemisphereLight(
+        0xd4e9ff,
+        0x242733,
+        3
+    );
 
-world.renderer.setAnimationLoop(() => {
-  world.renderer.render(world.scene, world.camera);
-});
+    world.scene.add(temporaryLight);
 
-document.querySelector('#message').textContent =
-    'Première scène prête.';
+    world.renderer.setAnimationLoop(() => {
+      world.renderer.render(world.scene, world.camera);
+    });
+
+    const model = await loadOutpost(world.scene);
+
+    console.log('Avant-poste chargé :', model);
+
+    message.textContent = 'Avant-poste chargé.';
+  } catch (error) {
+    console.error('Échec du chargement de la scène :', error);
+
+    message.textContent =
+        `Impossible de préparer l’avant-poste : ${error.message}`;
+  }
+}
+
+boot();

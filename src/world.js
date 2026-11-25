@@ -52,8 +52,29 @@ export function createWorld(canvas) {
 }
 
 export async function loadOutpost(scene) {
-  // TODO : charger, vérifier, ajouter et retourner le modèle.
-  return null;
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(MODEL_URL);
+
+  const model = gltf.scene;
+
+  const requiredNames = [
+    'Relay_01',
+    'Relay_02',
+    'Relay_03',
+    'Pivot_Antenna',
+  ];
+
+  for (const name of requiredNames) {
+    const object = model.getObjectByName(name);
+
+    if (!object) {
+      throw new Error(`Objet requis absent du GLB : ${name}`);
+    }
+  }
+
+  scene.add(model);
+
+  return model;
 }
 
 export function createEnvironment(scene) {
