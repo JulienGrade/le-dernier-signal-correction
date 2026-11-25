@@ -1,8 +1,63 @@
 import * as THREE from 'three';
+
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export const MODEL_URL = new URL('../assets/outpost.glb', import.meta.url).href;
+export const MODEL_URL =
+    new URL('../assets/outpost.glb', import.meta.url).href;
+
+export function disposeResources(root) {
+  if (!root) return;
+
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+
+  root.traverse((object) => {
+    if (object.geometry) {
+      geometries.add(object.geometry);
+    }
+
+    const objectMaterials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+
+    for (const material of objectMaterials) {
+      if (!material) continue;
+
+      materials.add(material);
+
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) {
+          textures.add(value);
+        }
+      }
+    }
+
+    object.shadow?.map?.dispose();
+    object.shadow?.mapPass?.dispose();
+  });
+
+  if (root.background?.isTexture) {
+    textures.add(root.background);
+  }
+
+  if (root.environment?.isTexture) {
+    textures.add(root.environment);
+  }
+
+  for (const texture of textures) {
+    texture.dispose();
+  }
+
+  for (const material of materials) {
+    material.dispose();
+  }
+
+  for (const geometry of geometries) {
+    geometry.dispose();
+  }
+}
 
 export function createWorld(canvas) {
   const renderer = new THREE.WebGLRenderer({
@@ -11,10 +66,12 @@ export function createWorld(canvas) {
     alpha: true,
   });
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+  renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, 1.75)
+  );
 
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.35;
@@ -49,7 +106,11 @@ export function createWorld(canvas) {
   const home = camera.position.clone();
   const targetHome = controls.target.clone();
 
+  let destroyed = false;
+
   function resize() {
+    if (destroyed) return;
+
     const { width, height } = canvas.getBoundingClientRect();
 
     if (width === 0 || height === 0) return;
@@ -65,30 +126,44 @@ export function createWorld(canvas) {
 
   resize();
 
+  function recenter() {
+    if (destroyed) return;
+
+    const damping = controls.enableDamping;
+
+    controls.enableDamping = false;
+    controls.update();
+
+    camera.position.copy(home);
+    controls.target.copy(targetHome);
+
+    controls.update();
+    controls.enableDamping = damping;
+  }
+
+  function dispose() {
+    if (destroyed) return;
+
+    destroyed = true;
+
+    renderer.setAnimationLoop(null);
+
+    observer.disconnect();
+    controls.dispose();
+
+    disposeResources(scene);
+    scene.clear();
+
+    renderer.dispose();
+  }
+
   return {
     renderer,
     scene,
     camera,
     controls,
-
-    recenter() {
-      const damping = controls.enableDamping;
-
-      controls.enableDamping = false;
-      controls.update();
-
-      camera.position.copy(home);
-      controls.target.copy(targetHome);
-      controls.update();
-
-      controls.enableDamping = damping;
-    },
-
-    dispose() {
-      observer.disconnect();
-      controls.dispose();
-      renderer.dispose();
-    },
+    recenter,
+    dispose,
   };
 }
 
@@ -106,10 +181,12 @@ export async function loadOutpost(scene) {
   ];
 
   for (const name of requiredNames) {
-    const object = model.getObjectByName(name);
+    if (!model.getObjectByName(name)) {
+      disposeResources(model);
 
-    if (!object) {
-      throw new Error(`Objet requis absent du GLB : ${name}`);
+      throw new Error(
+          `Objet requis absent du GLB : ${name}`
+      );
     }
   }
 
@@ -134,7 +211,11 @@ export function createEnvironment(scene) {
 
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight(0xffe5c5, 4.5);
+  const sun = new THREE.DirectionalLight(
+      0xffe5c5,
+      4.5
+  );
+
   sun.position.set(5, 9, 7);
   sun.castShadow = true;
 
@@ -154,7 +235,11 @@ export function createEnvironment(scene) {
 
   scene.add(sun);
 
-  const rim = new THREE.DirectionalLight(0x57bfff, 3.4);
+  const rim = new THREE.DirectionalLight(
+      0x57bfff,
+      3.4
+  );
+
   rim.position.set(-7, 4, -6);
 
   scene.add(rim);
@@ -194,7 +279,10 @@ export function createEnvironment(scene) {
     depthWrite: false,
   });
 
-  const stars = new THREE.Points(geometry, material);
+  const stars = new THREE.Points(
+      geometry,
+      material
+  );
 
   scene.add(stars);
 
