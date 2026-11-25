@@ -14,7 +14,7 @@ export function createWorld(canvas) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.35;
@@ -153,11 +153,11 @@ export function createEnvironment(scene) {
   );
 
   const material = new THREE.PointsMaterial({
-    color: 0xc4dcff,
-    size: 0.085,
-    sizeAttenuation: true,
+    color: 0xffffff,
+    size: 2,
+    sizeAttenuation: false,
     transparent: true,
-    opacity: 0.8,
+    opacity: 1,
     depthWrite: false,
   });
 
