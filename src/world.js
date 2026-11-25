@@ -31,6 +31,24 @@ export function createWorld(canvas) {
   camera.position.set(10.8, 8, 13.5);
   camera.lookAt(0, 0.25, 0);
 
+  const controls = new OrbitControls(camera, canvas);
+
+  controls.target.set(0, 0.25, 0);
+
+  controls.enableDamping = true;
+  controls.enablePan = false;
+
+  controls.minDistance = 10;
+  controls.maxDistance = 24;
+
+  controls.minPolarAngle = 0.25;
+  controls.maxPolarAngle = Math.PI / 2 - 0.1;
+
+  controls.update();
+
+  const home = camera.position.clone();
+  const targetHome = controls.target.clone();
+
   function resize() {
     const { width, height } = canvas.getBoundingClientRect();
 
@@ -51,9 +69,24 @@ export function createWorld(canvas) {
     renderer,
     scene,
     camera,
+    controls,
+
+    recenter() {
+      const damping = controls.enableDamping;
+
+      controls.enableDamping = false;
+      controls.update();
+
+      camera.position.copy(home);
+      controls.target.copy(targetHome);
+      controls.update();
+
+      controls.enableDamping = damping;
+    },
 
     dispose() {
       observer.disconnect();
+      controls.dispose();
       renderer.dispose();
     },
   };

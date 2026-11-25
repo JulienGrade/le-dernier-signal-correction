@@ -10,9 +10,17 @@ async function boot() {
   try {
     const world = createWorld(canvas);
 
+    const resetViewButton = document.querySelector('#view-reset');
+
+    resetViewButton.addEventListener('click', () => {
+      world.recenter();
+    });
+
     createEnvironment(world.scene);
 
     world.renderer.setAnimationLoop(() => {
+      world.controls.update();
+
       world.renderer.render(world.scene, world.camera);
     });
 
