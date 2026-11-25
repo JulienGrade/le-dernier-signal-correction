@@ -11,6 +11,14 @@ export function createWorld(canvas) {
     alpha: true,
   });
 
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(
@@ -72,12 +80,90 @@ export async function loadOutpost(scene) {
     }
   }
 
+  model.traverse((object) => {
+    if (!object.isMesh) return;
+
+    object.castShadow = true;
+    object.receiveShadow = true;
+  });
+
   scene.add(model);
 
   return model;
 }
 
 export function createEnvironment(scene) {
-  // TODO : lumières, ombres et ciel étoilé.
-  return null;
+  const ambient = new THREE.HemisphereLight(
+      0xa9cfff,
+      0x172030,
+      2.3
+  );
+
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xffe5c5, 4.5);
+  sun.position.set(5, 9, 7);
+  sun.castShadow = true;
+
+  sun.shadow.mapSize.set(2048, 2048);
+
+  Object.assign(sun.shadow.camera, {
+    left: -7,
+    right: 7,
+    top: 7,
+    bottom: -7,
+    near: 0.5,
+    far: 30,
+  });
+
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.normalBias = 0.035;
+
+  scene.add(sun);
+
+  const rim = new THREE.DirectionalLight(0x57bfff, 3.4);
+  rim.position.set(-7, 4, -6);
+
+  scene.add(rim);
+
+  const count = 1800;
+  const positions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const y = Math.random() * 2 - 1;
+    const radius = 40 + Math.random() * 25;
+
+    const horizontal = Math.sqrt(1 - y * y);
+
+    positions[i * 3] =
+        Math.cos(angle) * horizontal * radius;
+
+    positions[i * 3 + 1] = y * radius;
+
+    positions[i * 3 + 2] =
+        Math.sin(angle) * horizontal * radius;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+
+  geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(positions, 3)
+  );
+
+  const material = new THREE.PointsMaterial({
+    color: 0xc4dcff,
+    size: 0.085,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.8,
+    depthWrite: false,
+  });
+
+  const stars = new THREE.Points(geometry, material);
+
+  scene.add(stars);
+
+  return { stars };
 }

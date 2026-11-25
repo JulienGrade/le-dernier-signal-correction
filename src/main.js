@@ -1,6 +1,5 @@
 import './style.css';
-import * as THREE from 'three';
-import { createWorld, loadOutpost } from './world.js';
+import { createWorld, loadOutpost, createEnvironment } from './world.js';
 
 const canvas = document.querySelector('#scene');
 const message = document.querySelector('#message');
@@ -11,13 +10,7 @@ async function boot() {
   try {
     const world = createWorld(canvas);
 
-    const temporaryLight = new THREE.HemisphereLight(
-        0xd4e9ff,
-        0x242733,
-        3
-    );
-
-    world.scene.add(temporaryLight);
+    createEnvironment(world.scene);
 
     world.renderer.setAnimationLoop(() => {
       world.renderer.render(world.scene, world.camera);
