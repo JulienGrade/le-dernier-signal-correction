@@ -1,10 +1,28 @@
 import './style.css';
-import { createWorld, loadOutpost, createEnvironment } from './world.js';
+
+import {
+  createWorld,
+  loadOutpost,
+  createEnvironment,
+} from './world.js';
+
 import { createPicking } from './picking.js';
+import { createRelays } from './relays.js';
+
+import {
+  createMission,
+  activateRelay,
+  resetMission,
+  RELAY_IDS,
+} from './state.js';
 
 const canvas = document.querySelector('#scene');
 const message = document.querySelector('#message');
 const tooltip = document.querySelector('#tooltip');
+
+const relayButtons = [
+  ...document.querySelectorAll('[data-relay]'),
+];
 
 const relayLabels = {
   Relay_01: 'Relais Alpha',
@@ -12,45 +30,99 @@ const relayLabels = {
   Relay_03: 'Relais Gamma',
 };
 
+const state = createMission();
+
+let ready = false;
+let relays = null;
+
+function updateInterface() {
+  document.querySelector('#power').textContent =
+      `${state.active.size} / 3`;
+
+  document.querySelectorAll('.power-track i').forEach((bar, index) => {
+    bar.classList.toggle('on', index < state.active.size);
+  });
+
+  for (const button of relayButtons) {
+    const id = button.dataset.relay;
+    const active = state.active.has(id);
+
+    button.disabled =
+        !ready || active || state.phase !== 'collecting';
+
+    button.classList.toggle('on', active);
+
+    button.querySelector('.relay-state').textContent =
+        active ? 'Actif' : 'Éteint';
+
+    button.setAttribute(
+        'aria-label',
+        `${active ? 'Actif' : 'Activer'} : ${relayLabels[id]}`
+    );
+  }
+
+  document.querySelector('#transmit').disabled =
+      !ready || state.phase !== 'ready';
+
+  document.querySelector('#restart').disabled = !ready;
+
+  document.querySelector('#status-tag').textContent =
+      state.phase === 'ready' ? 'PRÊT' : 'HORS LIGNE';
+
+  if (ready) {
+    message.textContent = state.phase === 'ready'
+        ? 'Énergie rétablie. L’antenne est prête à transmettre.'
+        : 'Sélectionnez les relais dans la scène ou dans la liste.';
+  }
+}
+
+function requestActivation(id) {
+  if (!ready) return;
+
+  const activated = activateRelay(state, id);
+
+  if (!activated) return;
+
+  relays.setActive(id, true);
+  updateInterface();
+}
+
 async function boot() {
   message.textContent = 'Chargement de l’avant-poste…';
 
   try {
     const world = createWorld(canvas);
 
-    const resetViewButton = document.querySelector('#view-reset');
-
-    resetViewButton.addEventListener('click', () => {
-      world.recenter();
-    });
-
     createEnvironment(world.scene);
 
-    world.renderer.setAnimationLoop(() => {
+    document.querySelector('#view-reset').addEventListener(
+        'click',
+        () => world.recenter()
+    );
+
+    world.renderer.setAnimationLoop((now) => {
       world.controls.update();
+
+      if (relays) {
+        relays.update(now / 1000);
+      }
 
       world.renderer.render(world.scene, world.camera);
     });
 
     const model = await loadOutpost(world.scene);
 
-    console.log('Avant-poste chargé :', model);
-
-    message.textContent = 'Avant-poste chargé.';
+    relays = createRelays(model);
 
     const disconnectPicking = createPicking(
         canvas,
         world.camera,
         model,
-
-        (id) => {
-          console.log('Relais sélectionné :', id);
-
-          message.textContent =
-              `Relais sélectionné : ${relayLabels[id]}`;
-        },
+        requestActivation,
 
         (id, event) => {
+          relays.hover(id);
+
           tooltip.hidden = !id;
           canvas.style.cursor = id ? 'pointer' : 'grab';
 
@@ -58,7 +130,9 @@ async function boot() {
 
           const rect = canvas.getBoundingClientRect();
 
-          tooltip.textContent = relayLabels[id];
+          tooltip.textContent =
+              relayLabels[id] +
+              (state.active.has(id) ? ' · actif' : '');
 
           const left = Math.max(
               8,
@@ -78,11 +152,34 @@ async function boot() {
         }
     );
 
+    for (const button of relayButtons) {
+      button.addEventListener('click', () => {
+        requestActivation(button.dataset.relay);
+      });
+    }
+
+    document.querySelector('#restart').addEventListener('click', () => {
+      resetMission(state);
+
+      for (const id of RELAY_IDS) {
+        relays.setActive(id, false);
+      }
+
+      relays.hover(null);
+      tooltip.hidden = true;
+
+      world.recenter();
+      updateInterface();
+    });
+
     window.addEventListener('pagehide', (event) => {
       if (!event.persisted) {
         disconnectPicking();
       }
     });
+
+    ready = true;
+    updateInterface();
   } catch (error) {
     console.error('Échec du chargement de la scène :', error);
 
